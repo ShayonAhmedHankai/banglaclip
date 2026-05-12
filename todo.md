@@ -39,45 +39,52 @@
 - [ ] Implement Export stage (subtitle burn + 9:16 crop + encoding)
 
 ## Phase 6: Job Configuration Panel
-- [ ] Design configuration UI for silence removal settings (dB threshold, padding)
-- [ ] Add caption style configuration (font, color, alignment)
-- [ ] Implement B-roll settings (max clips per minute, score threshold)
-- [ ] Create export settings (aspect ratio, crop mode, quality)
-- [ ] Store and retrieve job configurations from database
+- [x] Design configuration UI for silence removal settings (dB threshold, padding)
+- [x] Add caption style configuration (font, color, alignment)
+- [x] Implement B-roll settings (max clips per minute, score threshold)
+- [x] Create export settings (aspect ratio, crop mode, quality)
+- [x] Create job configuration dialog with all settings
+- [x] Store and retrieve job configurations from database
 
 ## Phase 7: Batch Processing & Scheduling
-- [ ] Implement batch job queue system
+- [x] Create batch processing UI component
+- [x] Design batch job scheduler interface
+- [ ] Implement batch job queue system in database
 - [ ] Create cron job scheduler for sequential processing
-- [ ] Add batch job management UI (schedule, view queue, cancel)
 - [ ] Implement sequential job processing (not parallel)
 - [ ] Add job completion notifications
 
 ## Phase 8: YouTube Integration
-- [ ] Set up YouTube Data API v3 authentication
-- [ ] Create YouTube upload procedure with OAuth flow
-- [ ] Implement upload with auto-generated title/description from transcript
-- [ ] Store video ID and public URL in job record
+- [x] Create YouTube upload router with metadata generation
+- [x] Implement LLM-based title/description generation
+- [x] Create YouTube upload procedure
+- [x] Store video ID and public URL in job record
+- [ ] Set up YouTube Data API v3 authentication (requires user OAuth)
+- [ ] Implement actual YouTube upload with credentials
 - [ ] Add YouTube upload toggle and status in dashboard
 
 ## Phase 9: Owner Notifications
-- [ ] Implement job completion notifications via notifyOwner
-- [ ] Add job failure notifications with error details
+- [x] Implement job completion notifications via notifyOwner
+- [x] Add job failure notifications with error details
+- [x] Create notifications router with multiple notification types
+- [x] Test notification delivery (4 tests passing)
 - [ ] Create notification UI in dashboard
-- [ ] Test notification delivery
+- [ ] Add real-time notification display
 
 ## Phase 10: UI Polish & Refinement
-- [ ] Refine color scheme and typography
+- [x] Refine color scheme and typography with gradient design
 - [ ] Add smooth animations and transitions
 - [ ] Implement loading states and skeletons
-- [ ] Add empty states for new users
-- [ ] Polish form interactions and validation feedback
-- [ ] Ensure responsive design across devices
+- [x] Add empty states for new users
+- [x] Polish form interactions and validation feedback
+- [x] Ensure responsive design across devices
 - [ ] Add micro-interactions and visual feedback
 
 ## Phase 11: Testing & Quality Assurance
-- [x] Write vitest tests for tRPC procedures (files, jobs, pipeline routers)
+- [x] Write vitest tests for tRPC procedures (files, jobs, pipeline, notifications routers)
 - [x] Test file upload and storage integration
 - [x] Test pipeline job creation and status tracking
+- [x] Test notifications router (4 tests passing)
 - [ ] Test dashboard data fetching and real-time updates
 - [ ] Test YouTube integration flow
 - [ ] Test batch processing and cron scheduling

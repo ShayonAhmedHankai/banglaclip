@@ -12,7 +12,11 @@ interface UploadProgress {
   error?: string;
 }
 
-export default function VideoUploadZone() {
+interface VideoUploadZoneProps {
+  onFileUploaded?: (fileId: number) => void;
+}
+
+export default function VideoUploadZone({ onFileUploaded }: VideoUploadZoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
@@ -74,6 +78,11 @@ export default function VideoUploadZone() {
         await utils.files.list.invalidate();
 
         toast.success(`${file.name} uploaded successfully`);
+        
+        // Call the callback with the file ID
+        if (onFileUploaded && result?.id) {
+          onFileUploaded(result.id);
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Upload failed";
         setUploads(prev => prev.map(u =>

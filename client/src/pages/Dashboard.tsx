@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Plus, Play, Download, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Link } from "wouter";
-import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import VideoUploadZone from "@/components/VideoUploadZone";
+import CreateJobDialog from "@/components/CreateJobDialog";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,16 @@ import {
 export default function Dashboard() {
   const { user } = useAuth();
   const [showUpload, setShowUpload] = useState(false);
+  const [showCreateJob, setShowCreateJob] = useState(false);
+  const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
   const { data: jobs, isLoading } = trpc.jobs.list.useQuery();
   const { data: files } = trpc.files.list.useQuery();
+
+  const handleFileUploaded = (fileId: number) => {
+    setSelectedFileId(fileId);
+    setShowUpload(false);
+    setShowCreateJob(true);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -189,14 +198,27 @@ export default function Dashboard() {
       <Dialog open={showUpload} onOpenChange={setShowUpload}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Pipeline Job</DialogTitle>
+            <DialogTitle>Upload Video File</DialogTitle>
             <DialogDescription>
-              Upload a video file to start the automated processing pipeline
+              Select an MP4 video file to upload. You'll configure the pipeline settings next.
             </DialogDescription>
           </DialogHeader>
-          <VideoUploadZone />
+          <VideoUploadZone onFileUploaded={handleFileUploaded} />
         </DialogContent>
       </Dialog>
+
+      {/* Create Job Dialog */}
+      {selectedFileId && (
+        <CreateJobDialog
+          open={showCreateJob}
+          onOpenChange={setShowCreateJob}
+          inputFileId={selectedFileId}
+          onJobCreated={() => {
+            setShowCreateJob(false);
+            setSelectedFileId(null);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
