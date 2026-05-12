@@ -7,6 +7,7 @@ import { jobsRouter } from "./routers/jobs";
 import { pipelineRouter } from "./routers/pipeline";
 import { youtubeRouter } from "./routers/youtube";
 import { notificationsRouter } from "./routers/notifications";
+import { batchRouter } from "./routers/batch";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -16,6 +17,7 @@ export const appRouter = router({
   pipeline: pipelineRouter,
   youtube: youtubeRouter,
   notifications: notificationsRouter,
+  batch: batchRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

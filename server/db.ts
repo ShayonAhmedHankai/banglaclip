@@ -15,6 +15,9 @@ import {
   batchJobs,
   BatchJob,
   InsertBatchJob,
+  batchJobItems,
+  BatchJobItem,
+  InsertBatchJobItem,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -263,4 +266,31 @@ export async function updateBatchJobStatus(
       ...updates,
     })
     .where(eq(batchJobs.id, batchJobId));
+}
+
+export async function addBatchJobItem(data: InsertBatchJobItem): Promise<BatchJobItem> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(batchJobItems).values(data);
+  const items = await db.select().from(batchJobItems).where(eq(batchJobItems.id, result[0].insertId as number)).limit(1);
+  return items[0]!;
+}
+
+export async function getBatchJobItems(batchJobId: number): Promise<BatchJobItem[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(batchJobItems).where(eq(batchJobItems.batchJobId, batchJobId));
+}
+
+export async function getBatchJobById(batchJobId: number, userId: number): Promise<BatchJob | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(batchJobs)
+    .where(eq(batchJobs.id, batchJobId) && eq(batchJobs.userId, userId))
+    .limit(1);
+  
+  return result[0];
 }
