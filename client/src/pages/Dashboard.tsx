@@ -22,7 +22,16 @@ export default function Dashboard() {
   const [showUpload, setShowUpload] = useState(false);
   const [showCreateJob, setShowCreateJob] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<number | null>(null);
-  const { data: jobs, isLoading } = trpc.jobs.list.useQuery();
+  const { data: jobs, isLoading } = trpc.jobs.list.useQuery(undefined, {
+    refetchInterval: query => {
+      const data = query.state.data;
+      if (!Array.isArray(data)) return false;
+      const hasActive = data.some(
+        (j: { status: string }) => j.status === "processing" || j.status === "queued",
+      );
+      return hasActive ? 3000 : false;
+    },
+  });
   const { data: files } = trpc.files.list.useQuery();
 
   const handleFileUploaded = (fileId: number) => {

@@ -3,9 +3,10 @@ import {
   updatePipelineJobStatus,
   getJobStages,
   updatePipelineStageStatus,
-  getUserVideoFiles,
 } from "../db";
-import { TRPCError } from "@trpc/server";
+import { runSilenceRemoval } from "./silenceRemoval";
+import { runCaptionGeneration } from "./captionGeneration";
+import { runExport } from "./exportStage";
 
 export type PipelineStage = "silence_removal" | "caption_generation" | "broll_overlay" | "export" | "youtube_upload";
 
@@ -16,16 +17,10 @@ export type PipelineStage = "silence_removal" | "caption_generation" | "broll_ov
 export async function executePipelineJob(jobId: number): Promise<void> {
   try {
     const job = await getPipelineJobById(jobId);
-    if (!job) {
-      throw new Error(`Job ${jobId} not found`);
-    }
+    if (!job) throw new Error(`Job ${jobId} not found`);
 
-    // Update job status to processing
-    await updatePipelineJobStatus(jobId, "processing", {
-      startedAt: new Date(),
-    });
+    await updatePipelineJobStatus(jobId, "processing", { startedAt: new Date() });
 
-    // Get all stages for this job
     const stages = await getJobStages(jobId);
     const stageOrder: PipelineStage[] = [
       "silence_removal",
@@ -35,26 +30,20 @@ export async function executePipelineJob(jobId: number): Promise<void> {
       "youtube_upload",
     ];
 
-    // Execute each stage in order
     for (const stageName of stageOrder) {
       const stage = stages.find(s => s.stageName === stageName);
-      if (!stage) continue; // Skip if stage not created for this job
+      if (!stage) continue;
 
       try {
-        // Update stage status to processing
-        await updatePipelineStageStatus(stage.id, "processing", {
-          startedAt: new Date(),
-        });
+        await updatePipelineStageStatus(stage.id, "processing", { startedAt: new Date() });
+        await updatePipelineJobStatus(jobId, "processing", { currentStage: stageName });
 
-        // Update job current stage
-        await updatePipelineJobStatus(jobId, "processing", {
-          currentStage: stageName,
-        });
+        // Re-fetch job so each stage sees up-to-date config/outputFileId
+        const freshJob = await getPipelineJobById(jobId);
+        if (!freshJob) throw new Error(`Job ${jobId} disappeared during execution`);
 
-        // Execute the stage
-        await executeStage(jobId, stageName, job);
+        await executeStage(jobId, stageName, stage.id, freshJob);
 
-        // Mark stage as completed
         await updatePipelineStageStatus(stage.id, "completed", {
           completedAt: new Date(),
           progressPercent: 100,
@@ -62,13 +51,11 @@ export async function executePipelineJob(jobId: number): Promise<void> {
       } catch (error) {
         console.error(`[Pipeline] Stage ${stageName} failed:`, error);
 
-        // Mark stage as failed
         await updatePipelineStageStatus(stage.id, "failed", {
           completedAt: new Date(),
           errorMessage: error instanceof Error ? error.message : "Unknown error",
         });
 
-        // Mark job as failed
         await updatePipelineJobStatus(jobId, "failed", {
           errorMessage: error instanceof Error ? error.message : "Pipeline execution failed",
           errorStage: stageName,
@@ -79,66 +66,70 @@ export async function executePipelineJob(jobId: number): Promise<void> {
       }
     }
 
-    // Mark job as completed
-    await updatePipelineJobStatus(jobId, "done", {
-      completedAt: new Date(),
-    });
-
+    await updatePipelineJobStatus(jobId, "done", { completedAt: new Date() });
     console.log(`[Pipeline] Job ${jobId} completed successfully`);
   } catch (error) {
-    console.error(`[Pipeline] Job execution failed:`, error);
+    console.error(`[Pipeline] Job ${jobId} execution failed:`, error);
     throw error;
   }
 }
 
 /**
- * Execute a specific pipeline stage
- * This is a placeholder - actual implementation would call Python scripts or external services
+ * Dispatch a stage to its real implementation (or simulate for unimplemented stages)
  */
 async function executeStage(
   jobId: number,
   stageName: PipelineStage,
-  job: any
+  stageId: number,
+  job: any,
 ): Promise<void> {
-  // Simulate stage execution with progress updates
-  const progressSteps = [25, 50, 75, 100];
+  switch (stageName) {
+    case "silence_removal":
+      return runSilenceRemoval(jobId, stageId, job);
 
-  for (const progress of progressSteps) {
-    // In a real implementation, this would:
-    // 1. Call the corresponding Python script (cut.py, caption.py, broll.py, export.py)
-    // 2. Monitor progress and update database
-    // 3. Handle errors and retry logic
+    case "caption_generation":
+      return runCaptionGeneration(jobId, stageId, job);
 
-    // For now, simulate processing
-    await new Promise(resolve => setTimeout(resolve, 500));
+    case "export":
+      return runExport(jobId, stageId, job);
 
-    const stages = await getJobStages(jobId);
-    const stage = stages.find(s => s.stageName === stageName);
-    if (stage) {
-      await updatePipelineStageStatus(stage.id, "processing", {
-        progressPercent: progress,
-      });
-    }
+    case "broll_overlay":
+    case "youtube_upload":
+      // Not yet implemented — simulate with progress ticks
+      await simulateStage(jobId, stageName, stageId);
+      break;
+
+    default:
+      console.warn(`[Pipeline] Unknown stage: ${stageName}`);
   }
-
-  console.log(`[Pipeline] Stage ${stageName} for job ${jobId} completed`);
 }
 
 /**
- * Queue a job for processing
- * In production, this would be called by a cron job or message queue
+ * Simulate a stage with timed progress updates (placeholder for unimplemented stages)
+ */
+async function simulateStage(
+  jobId: number,
+  stageName: PipelineStage,
+  stageId: number,
+): Promise<void> {
+  for (const progress of [25, 50, 75]) {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    await updatePipelineStageStatus(stageId, "processing", { progressPercent: progress });
+  }
+  console.log(`[Pipeline] Stage ${stageName} for job ${jobId} simulated`);
+}
+
+/**
+ * Queue a job for processing.
+ * In production this would push to a message queue; for now runs inline.
  */
 export async function queueJobForProcessing(jobId: number): Promise<void> {
   const job = await getPipelineJobById(jobId);
-  if (!job) {
-    throw new Error(`Job ${jobId} not found`);
-  }
+  if (!job) throw new Error(`Job ${jobId} not found`);
+  if (job.status !== "queued") throw new Error(`Job ${jobId} is not in queued status`);
 
-  if (job.status !== "queued") {
-    throw new Error(`Job ${jobId} is not in queued status`);
-  }
-
-  // In production, this would push the job to a queue (Redis, RabbitMQ, etc.)
-  // For now, execute immediately
-  await executePipelineJob(jobId);
+  // Fire-and-forget so the tRPC mutation returns immediately
+  executePipelineJob(jobId).catch(err =>
+    console.error(`[Pipeline] Background execution failed for job ${jobId}:`, err),
+  );
 }
