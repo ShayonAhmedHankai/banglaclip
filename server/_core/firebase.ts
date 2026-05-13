@@ -5,7 +5,7 @@ let _app: admin.app.App | null = null;
 function getApp(): admin.app.App {
   if (_app) return _app;
 
-  const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const json = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!json) {
     throw new Error(
       "FIREBASE_SERVICE_ACCOUNT_JSON is not set. Provide your Firebase service account JSON as a secret."

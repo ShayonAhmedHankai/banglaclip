@@ -42,3 +42,10 @@ externalPort = 3001
 deploymentTarget = "autoscale"
 run = ["node", "dist/index.js"]
 build = ["pnpm", "build"]
+
+[userenv]
+
+[userenv.shared]
+VITE_FIREBASE_PROJECT_ID = "banglaclip-5ed15"
+VITE_FIREBASE_AUTH_DOMAIN = "banglaclip-5ed15.firebaseapp.com"
+VITE_FIREBASE_STORAGE_BUCKET = "banglaclip-5ed15.appspot.com"
