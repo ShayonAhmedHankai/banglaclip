@@ -23,7 +23,6 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -37,8 +36,8 @@ export async function getDb() {
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
+  if (!user.firebaseUid) {
+    throw new Error("User firebaseUid is required for upsert");
   }
 
   const db = await getDb();
@@ -48,9 +47,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
+    const values: InsertUser = { firebaseUid: user.firebaseUid };
     const updateSet: Record<string, unknown> = {};
 
     const textFields = ["name", "email", "loginMethod"] as const;
@@ -73,7 +70,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.role !== undefined) {
       values.role = user.role;
       updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
+    } else if (ENV.ownerFirebaseUid && user.firebaseUid === ENV.ownerFirebaseUid) {
       values.role = 'admin';
       updateSet.role = 'admin';
     }
@@ -86,24 +83,21 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
 }
 
-export async function getUserByOpenId(openId: string) {
+export async function getUserByFirebaseUid(firebaseUid: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get user: database not available");
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
+  const result = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -115,13 +109,10 @@ export async function getUserById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-/**
- * Video file queries
- */
 export async function createVideoFile(data: InsertVideoFile): Promise<VideoFile> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   const result = await db.insert(videoFiles).values(data);
   const files = await db.select().from(videoFiles).where(eq(videoFiles.id, result[0].insertId as number)).limit(1);
   return files[0]!;
@@ -130,30 +121,24 @@ export async function createVideoFile(data: InsertVideoFile): Promise<VideoFile>
 export async function getUserVideoFiles(userId: number): Promise<VideoFile[]> {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(videoFiles).where(eq(videoFiles.userId, userId));
 }
 
 export async function getVideoFileById(id: number, userId?: number): Promise<VideoFile | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  
-  const query = db.select().from(videoFiles).where(eq(videoFiles.id, id));
-  const results = await query.limit(1);
-  
+
+  const results = await db.select().from(videoFiles).where(eq(videoFiles.id, id)).limit(1);
   if (results.length === 0) return undefined;
   if (userId && results[0].userId !== userId) return undefined;
-  
   return results[0];
 }
 
-/**
- * Pipeline job queries
- */
 export async function createPipelineJob(data: InsertPipelineJob): Promise<PipelineJob> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   const result = await db.insert(pipelineJobs).values(data);
   const jobs = await db.select().from(pipelineJobs).where(eq(pipelineJobs.id, result[0].insertId as number)).limit(1);
   return jobs[0]!;
@@ -162,20 +147,17 @@ export async function createPipelineJob(data: InsertPipelineJob): Promise<Pipeli
 export async function getPipelineJobById(id: number, userId?: number): Promise<PipelineJob | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  
-  const query = db.select().from(pipelineJobs).where(eq(pipelineJobs.id, id));
-  const results = await query.limit(1);
-  
+
+  const results = await db.select().from(pipelineJobs).where(eq(pipelineJobs.id, id)).limit(1);
   if (results.length === 0) return undefined;
   if (userId && results[0].userId !== userId) return undefined;
-  
   return results[0];
 }
 
 export async function getUserPipelineJobs(userId: number): Promise<PipelineJob[]> {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(pipelineJobs).where(eq(pipelineJobs.userId, userId));
 }
 
@@ -186,23 +168,16 @@ export async function updatePipelineJobStatus(
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   await db.update(pipelineJobs)
-    .set({
-      status,
-      updatedAt: new Date(),
-      ...updates,
-    })
+    .set({ status, updatedAt: new Date(), ...updates })
     .where(eq(pipelineJobs.id, jobId));
 }
 
-/**
- * Pipeline stage queries
- */
 export async function createPipelineStage(data: InsertPipelineStage): Promise<PipelineStage> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   const result = await db.insert(pipelineStages).values(data);
   const stages = await db.select().from(pipelineStages).where(eq(pipelineStages.id, result[0].insertId as number)).limit(1);
   return stages[0]!;
@@ -211,7 +186,7 @@ export async function createPipelineStage(data: InsertPipelineStage): Promise<Pi
 export async function getJobStages(jobId: number): Promise<PipelineStage[]> {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(pipelineStages).where(eq(pipelineStages.jobId, jobId));
 }
 
@@ -222,23 +197,16 @@ export async function updatePipelineStageStatus(
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   await db.update(pipelineStages)
-    .set({
-      status,
-      updatedAt: new Date(),
-      ...updates,
-    })
+    .set({ status, updatedAt: new Date(), ...updates })
     .where(eq(pipelineStages.id, stageId));
 }
 
-/**
- * Batch job queries
- */
 export async function createBatchJob(data: InsertBatchJob): Promise<BatchJob> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   const result = await db.insert(batchJobs).values(data);
   const jobs = await db.select().from(batchJobs).where(eq(batchJobs.id, result[0].insertId as number)).limit(1);
   return jobs[0]!;
@@ -247,7 +215,7 @@ export async function createBatchJob(data: InsertBatchJob): Promise<BatchJob> {
 export async function getUserBatchJobs(userId: number): Promise<BatchJob[]> {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(batchJobs).where(eq(batchJobs.userId, userId));
 }
 
@@ -258,20 +226,16 @@ export async function updateBatchJobStatus(
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   await db.update(batchJobs)
-    .set({
-      status,
-      updatedAt: new Date(),
-      ...updates,
-    })
+    .set({ status, updatedAt: new Date(), ...updates })
     .where(eq(batchJobs.id, batchJobId));
 }
 
 export async function addBatchJobItem(data: InsertBatchJobItem): Promise<BatchJobItem> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   const result = await db.insert(batchJobItems).values(data);
   const items = await db.select().from(batchJobItems).where(eq(batchJobItems.id, result[0].insertId as number)).limit(1);
   return items[0]!;
@@ -280,17 +244,18 @@ export async function addBatchJobItem(data: InsertBatchJobItem): Promise<BatchJo
 export async function getBatchJobItems(batchJobId: number): Promise<BatchJobItem[]> {
   const db = await getDb();
   if (!db) return [];
-  
+
   return db.select().from(batchJobItems).where(eq(batchJobItems.batchJobId, batchJobId));
 }
 
 export async function getBatchJobById(batchJobId: number, userId: number): Promise<BatchJob | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  
+
   const result = await db.select().from(batchJobs)
-    .where(eq(batchJobs.id, batchJobId) && eq(batchJobs.userId, userId))
+    .where(eq(batchJobs.id, batchJobId))
     .limit(1);
-  
+
+  if (!result[0] || result[0].userId !== userId) return undefined;
   return result[0];
 }
