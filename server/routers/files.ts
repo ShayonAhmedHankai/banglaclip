@@ -52,7 +52,11 @@ export const filesRouter = router({
     .input(
       z.object({
         filename: z.string().min(1).max(255),
-        fileBuffer: z.instanceof(Buffer),
+        // Accept Buffer, Uint8Array, or the JSON-serialized form {"type":"Buffer","data":[...]}
+        fileBuffer: z.union([
+          z.instanceof(Uint8Array),
+          z.object({ type: z.literal("Buffer"), data: z.array(z.number()) }),
+        ]),
         fileSizeBytes: z.number().positive().max(MAX_FILE_SIZE),
         durationSeconds: z.number().positive().optional(),
       })
@@ -65,13 +69,21 @@ export const filesRouter = router({
         });
       }
 
+      // Normalise to a proper Buffer regardless of how it was serialised over the wire
+      const fileBuffer: Buffer = Buffer.isBuffer(input.fileBuffer)
+        ? input.fileBuffer
+        : Buffer.from(
+            (input.fileBuffer as { type: "Buffer"; data: number[] }).data ??
+              (input.fileBuffer as Uint8Array)
+          );
+
       try {
         // Generate a unique file key for S3
         const timestamp = Date.now();
         const fileKey = `videos/${ctx.user.id}/${timestamp}-${input.filename}`;
 
         // Upload to S3
-        const { url, key } = await storagePut(fileKey, input.fileBuffer, "video/mp4");
+        const { url, key } = await storagePut(fileKey, fileBuffer, "video/mp4");
 
         // Create database record
         const videoFile = await createVideoFile({
