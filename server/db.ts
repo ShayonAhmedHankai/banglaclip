@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
 import {
   InsertUser,
   users,
@@ -83,7 +83,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    await db.insert(users).values(values).onConflictDoUpdate({ target: users.firebaseUid, set: updateSet });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -113,9 +113,8 @@ export async function createVideoFile(data: InsertVideoFile): Promise<VideoFile>
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(videoFiles).values(data);
-  const files = await db.select().from(videoFiles).where(eq(videoFiles.id, result[0].insertId as number)).limit(1);
-  return files[0]!;
+  const result = await db.insert(videoFiles).values(data).returning();
+  return result[0];
 }
 
 export async function getUserVideoFiles(userId: number): Promise<VideoFile[]> {
@@ -139,9 +138,8 @@ export async function createPipelineJob(data: InsertPipelineJob): Promise<Pipeli
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(pipelineJobs).values(data);
-  const jobs = await db.select().from(pipelineJobs).where(eq(pipelineJobs.id, result[0].insertId as number)).limit(1);
-  return jobs[0]!;
+  const result = await db.insert(pipelineJobs).values(data).returning();
+  return result[0];
 }
 
 export async function getPipelineJobById(id: number, userId?: number): Promise<PipelineJob | undefined> {
@@ -178,9 +176,8 @@ export async function createPipelineStage(data: InsertPipelineStage): Promise<Pi
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(pipelineStages).values(data);
-  const stages = await db.select().from(pipelineStages).where(eq(pipelineStages.id, result[0].insertId as number)).limit(1);
-  return stages[0]!;
+  const result = await db.insert(pipelineStages).values(data).returning();
+  return result[0];
 }
 
 export async function getJobStages(jobId: number): Promise<PipelineStage[]> {
@@ -207,9 +204,8 @@ export async function createBatchJob(data: InsertBatchJob): Promise<BatchJob> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(batchJobs).values(data);
-  const jobs = await db.select().from(batchJobs).where(eq(batchJobs.id, result[0].insertId as number)).limit(1);
-  return jobs[0]!;
+  const result = await db.insert(batchJobs).values(data).returning();
+  return result[0];
 }
 
 export async function getUserBatchJobs(userId: number): Promise<BatchJob[]> {
@@ -236,9 +232,8 @@ export async function addBatchJobItem(data: InsertBatchJobItem): Promise<BatchJo
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(batchJobItems).values(data);
-  const items = await db.select().from(batchJobItems).where(eq(batchJobItems.id, result[0].insertId as number)).limit(1);
-  return items[0]!;
+  const result = await db.insert(batchJobItems).values(data).returning();
+  return result[0];
 }
 
 export async function getBatchJobItems(batchJobId: number): Promise<BatchJobItem[]> {
