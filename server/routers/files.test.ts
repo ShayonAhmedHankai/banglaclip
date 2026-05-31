@@ -6,7 +6,7 @@ import type { User } from "../../drizzle/schema";
 // Mock the storage and database modules
 vi.mock("../storage", () => ({
   storagePut: vi.fn(async () => ({
-    url: "/manus-storage/test-key",
+    url: "/storage/test-key",
     key: "test-key",
   })),
 }));
@@ -28,7 +28,7 @@ function createTestContext(): TrpcContext {
     openId: "test-user",
     email: "test@example.com",
     name: "Test User",
-    loginMethod: "manus",
+    loginMethod: "google",
     role: "user",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -90,6 +90,6 @@ describe("filesRouter", () => {
     expect(result).toBeDefined();
     expect(result.id).toBe(1);
     expect(result.filename).toBe("test-video.mp4");
-    expect(result.url).toBe("/manus-storage/test-key");
+    expect(result.url).toBe("/storage/test-key");
   });
 });

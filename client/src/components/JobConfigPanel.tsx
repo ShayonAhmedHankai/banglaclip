@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown } from "lucide-react";
 
 interface JobConfig {
   silenceThresholdDb: number;
@@ -60,26 +58,23 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
   return (
     <div className="space-y-6">
       <Tabs defaultValue="silence" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="silence">Silence</TabsTrigger>
-          <TabsTrigger value="captions">Captions</TabsTrigger>
-          <TabsTrigger value="broll">B-Roll</TabsTrigger>
-          <TabsTrigger value="export">Export</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 bg-[#1a1a1a] border border-[#3a3a3a]">
+          <TabsTrigger value="silence" className="text-[#ABABAB] data-[state=active]:bg-[#242424] data-[state=active]:text-white">Silence</TabsTrigger>
+          <TabsTrigger value="captions" className="text-[#ABABAB] data-[state=active]:bg-[#242424] data-[state=active]:text-white">Captions</TabsTrigger>
+          <TabsTrigger value="broll" className="text-[#ABABAB] data-[state=active]:bg-[#242424] data-[state=active]:text-white">B-Roll</TabsTrigger>
+          <TabsTrigger value="export" className="text-[#ABABAB] data-[state=active]:bg-[#242424] data-[state=active]:text-white">Export</TabsTrigger>
         </TabsList>
 
         {/* Silence Removal Settings */}
         <TabsContent value="silence" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Silence Removal Settings</CardTitle>
-              <CardDescription>
-                Configure how the system detects and removes silent segments from your video
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Silence Threshold */}
+          <div className="bg-[#242424] border border-[#3a3a3a] rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-white mb-1">Silence Removal Settings</h3>
+            <p className="text-sm text-[#ABABAB] mb-6">
+              Configure how the system detects and removes silent segments from your video
+            </p>
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label>Silence Threshold (dB)</Label>
+                <Label className="text-[#ABABAB]">Silence Threshold (dB)</Label>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[config.silenceThresholdDb]}
@@ -89,16 +84,15 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
                     step={1}
                     className="flex-1"
                   />
-                  <span className="text-sm font-mono w-12 text-right">{config.silenceThresholdDb} dB</span>
+                  <span className="text-sm font-mono w-12 text-right text-white">{config.silenceThresholdDb} dB</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[#ABABAB]">
                   Lower values = more aggressive silence detection. Default: -35 dB
                 </p>
               </div>
 
-              {/* Minimum Duration */}
               <div className="space-y-2">
-                <Label>Minimum Silence Duration (seconds)</Label>
+                <Label className="text-[#ABABAB]">Minimum Silence Duration (seconds)</Label>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[config.silenceMinDurationSec]}
@@ -108,16 +102,15 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
                     step={0.1}
                     className="flex-1"
                   />
-                  <span className="text-sm font-mono w-12 text-right">{config.silenceMinDurationSec.toFixed(1)}s</span>
+                  <span className="text-sm font-mono w-12 text-right text-white">{config.silenceMinDurationSec.toFixed(1)}s</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[#ABABAB]">
                   Minimum silent segment to remove. Default: 0.4s
                 </p>
               </div>
 
-              {/* Padding */}
               <div className="space-y-2">
-                <Label>Silence Padding (seconds)</Label>
+                <Label className="text-[#ABABAB]">Silence Padding (seconds)</Label>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[config.silencePaddingSec]}
@@ -127,46 +120,42 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
                     step={0.05}
                     className="flex-1"
                   />
-                  <span className="text-sm font-mono w-12 text-right">{config.silencePaddingSec.toFixed(2)}s</span>
+                  <span className="text-sm font-mono w-12 text-right text-white">{config.silencePaddingSec.toFixed(2)}s</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[#ABABAB]">
                   Keep small audio buffer around cuts. Default: 0.1s
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Caption Settings */}
         <TabsContent value="captions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Bengali Caption Settings</CardTitle>
-              <CardDescription>
-                Configure subtitle appearance and positioning
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Font Selection */}
+          <div className="bg-[#242424] border border-[#3a3a3a] rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-white mb-1">Bengali Caption Settings</h3>
+            <p className="text-sm text-[#ABABAB] mb-6">
+              Configure subtitle appearance and positioning
+            </p>
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label>Font Name</Label>
+                <Label className="text-[#ABABAB]">Font Name</Label>
                 <Select value={config.captionFontName} onValueChange={(v) => handleConfigChange("captionFontName", v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-[#1a1a1a] border-[#3a3a3a] text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Arial">Arial</SelectItem>
-                    <SelectItem value="Helvetica">Helvetica</SelectItem>
-                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                    <SelectItem value="Courier">Courier</SelectItem>
-                    <SelectItem value="Verdana">Verdana</SelectItem>
+                  <SelectContent className="bg-[#242424] border-[#3a3a3a]">
+                    <SelectItem value="Arial" className="text-white focus:bg-[#2c2c2c] focus:text-white">Arial</SelectItem>
+                    <SelectItem value="Helvetica" className="text-white focus:bg-[#2c2c2c] focus:text-white">Helvetica</SelectItem>
+                    <SelectItem value="Times New Roman" className="text-white focus:bg-[#2c2c2c] focus:text-white">Times New Roman</SelectItem>
+                    <SelectItem value="Courier" className="text-white focus:bg-[#2c2c2c] focus:text-white">Courier</SelectItem>
+                    <SelectItem value="Verdana" className="text-white focus:bg-[#2c2c2c] focus:text-white">Verdana</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Font Size */}
               <div className="space-y-2">
-                <Label>Font Size (pixels)</Label>
+                <Label className="text-[#ABABAB]">Font Size (pixels)</Label>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[config.captionFontSize]}
@@ -176,77 +165,71 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
                     step={2}
                     className="flex-1"
                   />
-                  <span className="text-sm font-mono w-12 text-right">{config.captionFontSize}px</span>
+                  <span className="text-sm font-mono w-12 text-right text-white">{config.captionFontSize}px</span>
                 </div>
               </div>
 
-              {/* Text Color */}
               <div className="space-y-2">
-                <Label>Text Color</Label>
+                <Label className="text-[#ABABAB]">Text Color</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={config.captionFontColor}
                     onChange={(e) => handleConfigChange("captionFontColor", e.target.value)}
-                    className="h-10 w-16 rounded border"
+                    className="h-10 w-16 rounded border border-[#3a3a3a] bg-[#1a1a1a]"
                   />
                   <Input
                     value={config.captionFontColor}
                     onChange={(e) => handleConfigChange("captionFontColor", e.target.value)}
-                    className="font-mono text-sm"
+                    className="font-mono text-sm bg-[#1a1a1a] border-[#3a3a3a] text-white"
                   />
                 </div>
               </div>
 
-              {/* Outline Color */}
               <div className="space-y-2">
-                <Label>Outline Color</Label>
+                <Label className="text-[#ABABAB]">Outline Color</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={config.captionOutlineColor}
                     onChange={(e) => handleConfigChange("captionOutlineColor", e.target.value)}
-                    className="h-10 w-16 rounded border"
+                    className="h-10 w-16 rounded border border-[#3a3a3a] bg-[#1a1a1a]"
                   />
                   <Input
                     value={config.captionOutlineColor}
                     onChange={(e) => handleConfigChange("captionOutlineColor", e.target.value)}
-                    className="font-mono text-sm"
+                    className="font-mono text-sm bg-[#1a1a1a] border-[#3a3a3a] text-white"
                   />
                 </div>
               </div>
 
-              {/* Alignment */}
               <div className="space-y-2">
-                <Label>Alignment</Label>
+                <Label className="text-[#ABABAB]">Alignment</Label>
                 <Select value={config.captionAlignment} onValueChange={(v: any) => handleConfigChange("captionAlignment", v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-[#1a1a1a] border-[#3a3a3a] text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="top">Top</SelectItem>
-                    <SelectItem value="center">Center</SelectItem>
-                    <SelectItem value="bottom">Bottom</SelectItem>
+                  <SelectContent className="bg-[#242424] border-[#3a3a3a]">
+                    <SelectItem value="top" className="text-white focus:bg-[#2c2c2c] focus:text-white">Top</SelectItem>
+                    <SelectItem value="center" className="text-white focus:bg-[#2c2c2c] focus:text-white">Center</SelectItem>
+                    <SelectItem value="bottom" className="text-white focus:bg-[#2c2c2c] focus:text-white">Bottom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* B-Roll Settings */}
         <TabsContent value="broll" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>B-Roll Overlay Settings</CardTitle>
-              <CardDescription>
-                Configure automatic stock footage insertion
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Max Clips Per Minute */}
+          <div className="bg-[#242424] border border-[#3a3a3a] rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-white mb-1">B-Roll Overlay Settings</h3>
+            <p className="text-sm text-[#ABABAB] mb-6">
+              Configure automatic stock footage insertion
+            </p>
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label>Max Clips Per Minute</Label>
+                <Label className="text-[#ABABAB]">Max Clips Per Minute</Label>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[config.brollMaxPerMinute]}
@@ -256,16 +239,15 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
                     step={1}
                     className="flex-1"
                   />
-                  <span className="text-sm font-mono w-12 text-right">{config.brollMaxPerMinute}</span>
+                  <span className="text-sm font-mono w-12 text-right text-white">{config.brollMaxPerMinute}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[#ABABAB]">
                   Maximum number of B-roll clips to insert per minute of video
                 </p>
               </div>
 
-              {/* Minimum Score */}
               <div className="space-y-2">
-                <Label>Minimum Relevance Score</Label>
+                <Label className="text-[#ABABAB]">Minimum Relevance Score</Label>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={[config.brollMinScore]}
@@ -275,77 +257,71 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
                     step={0.05}
                     className="flex-1"
                   />
-                  <span className="text-sm font-mono w-12 text-right">{config.brollMinScore.toFixed(2)}</span>
+                  <span className="text-sm font-mono w-12 text-right text-white">{config.brollMinScore.toFixed(2)}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-[#ABABAB]">
                   Higher = more selective. Only use highly relevant clips. Default: 0.6
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Export Settings */}
         <TabsContent value="export" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Export Settings</CardTitle>
-              <CardDescription>
-                Configure final video output format and quality
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Aspect Ratio */}
+          <div className="bg-[#242424] border border-[#3a3a3a] rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-white mb-1">Export Settings</h3>
+            <p className="text-sm text-[#ABABAB] mb-6">
+              Configure final video output format and quality
+            </p>
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label>Aspect Ratio</Label>
+                <Label className="text-[#ABABAB]">Aspect Ratio</Label>
                 <Select value={config.exportAspectRatio} onValueChange={(v) => handleConfigChange("exportAspectRatio", v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-[#1a1a1a] border-[#3a3a3a] text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="9:16">9:16 (Vertical - Instagram Reels)</SelectItem>
-                    <SelectItem value="16:9">16:9 (Horizontal - YouTube)</SelectItem>
-                    <SelectItem value="1:1">1:1 (Square - TikTok)</SelectItem>
-                    <SelectItem value="4:5">4:5 (Instagram Feed)</SelectItem>
+                  <SelectContent className="bg-[#242424] border-[#3a3a3a]">
+                    <SelectItem value="9:16" className="text-white focus:bg-[#2c2c2c] focus:text-white">9:16 (Vertical - Instagram Reels)</SelectItem>
+                    <SelectItem value="16:9" className="text-white focus:bg-[#2c2c2c] focus:text-white">16:9 (Horizontal - YouTube)</SelectItem>
+                    <SelectItem value="1:1" className="text-white focus:bg-[#2c2c2c] focus:text-white">1:1 (Square - TikTok)</SelectItem>
+                    <SelectItem value="4:5" className="text-white focus:bg-[#2c2c2c] focus:text-white">4:5 (Instagram Feed)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Crop Mode */}
               <div className="space-y-2">
-                <Label>Crop Mode</Label>
+                <Label className="text-[#ABABAB]">Crop Mode</Label>
                 <Select value={config.exportCropMode} onValueChange={(v: any) => handleConfigChange("exportCropMode", v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-[#1a1a1a] border-[#3a3a3a] text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="center">Center (Crop from center)</SelectItem>
-                    <SelectItem value="top">Top (Focus on top)</SelectItem>
-                    <SelectItem value="bottom">Bottom (Focus on bottom)</SelectItem>
+                  <SelectContent className="bg-[#242424] border-[#3a3a3a]">
+                    <SelectItem value="center" className="text-white focus:bg-[#2c2c2c] focus:text-white">Center (Crop from center)</SelectItem>
+                    <SelectItem value="top" className="text-white focus:bg-[#2c2c2c] focus:text-white">Top (Focus on top)</SelectItem>
+                    <SelectItem value="bottom" className="text-white focus:bg-[#2c2c2c] focus:text-white">Bottom (Focus on bottom)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Quality */}
               <div className="space-y-2">
-                <Label>Export Quality</Label>
+                <Label className="text-[#ABABAB]">Export Quality</Label>
                 <Select value={config.exportQuality} onValueChange={(v: any) => handleConfigChange("exportQuality", v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-[#1a1a1a] border-[#3a3a3a] text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low (Smaller file, faster)</SelectItem>
-                    <SelectItem value="medium">Medium (Balanced)</SelectItem>
-                    <SelectItem value="high">High (Best quality, larger file)</SelectItem>
+                  <SelectContent className="bg-[#242424] border-[#3a3a3a]">
+                    <SelectItem value="low" className="text-white focus:bg-[#2c2c2c] focus:text-white">Low (720p - Smaller file)</SelectItem>
+                    <SelectItem value="medium" className="text-white focus:bg-[#2c2c2c] focus:text-white">Medium (1080p - Balanced)</SelectItem>
+                    <SelectItem value="high" className="text-white focus:bg-[#2c2c2c] focus:text-white">High (1080p - Best quality)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* YouTube Upload */}
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+              <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg border border-[#3a3a3a]">
                 <div>
-                  <Label className="text-base">Auto-upload to YouTube</Label>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <Label className="text-base text-white">Auto-upload to YouTube</Label>
+                  <p className="text-sm text-[#ABABAB] mt-1">
                     Automatically upload finished video to your YouTube channel
                   </p>
                 </div>
@@ -354,37 +330,33 @@ export default function JobConfigPanel({ onConfigChange, defaultConfig }: JobCon
                   onCheckedChange={(v) => handleConfigChange("youtubeUploadEnabled", v)}
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
       {/* Summary */}
-      <Card className="bg-muted/50">
-        <CardHeader>
-          <CardTitle className="text-base">Configuration Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Silence Threshold</p>
-              <p className="font-semibold">{config.silenceThresholdDb} dB</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Caption Font</p>
-              <p className="font-semibold">{config.captionFontName}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">B-Roll Max</p>
-              <p className="font-semibold">{config.brollMaxPerMinute}/min</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Export Quality</p>
-              <p className="font-semibold capitalize">{config.exportQuality}</p>
-            </div>
+      <div className="bg-[#1a1a1a] rounded-lg border border-[#3a3a3a] p-4">
+        <h3 className="text-base font-semibold text-white mb-3">Configuration Summary</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <p className="text-[#ABABAB]">Silence Threshold</p>
+            <p className="font-semibold text-white">{config.silenceThresholdDb} dB</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-[#ABABAB]">Caption Font</p>
+            <p className="font-semibold text-white">{config.captionFontName}</p>
+          </div>
+          <div>
+            <p className="text-[#ABABAB]">B-Roll Max</p>
+            <p className="font-semibold text-white">{config.brollMaxPerMinute}/min</p>
+          </div>
+          <div>
+            <p className="text-[#ABABAB]">Export Quality</p>
+            <p className="font-semibold text-white capitalize">{config.exportQuality}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
