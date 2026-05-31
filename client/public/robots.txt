@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://banglaclip.replit.app/sitemap.xml
+Sitemap: https://banglaclip--toxicgamersam.replit.app/sitemap.xml
