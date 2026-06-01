@@ -1,0 +1,4 @@
+- [Job status values](job-status-values.md) — pipelineJobs use "done" (not "completed"); pipelineStages use "completed". Mix-up causes silent badge bugs.
+- [Notification system](notification-system.md) — client-side only, localStorage-backed, NotificationContext in client/src/contexts/NotificationContext.tsx. Dashboard detects job transitions and fires notifications.
+- [Sidebar navigation](sidebar-navigation.md) — all 5 sidebar routes must stay distinct: /dashboard, /jobs, /batch, /youtube, /settings. Previously all pointed to /dashboard.
+- [Worker double-set bug](worker-double-set.md) — worker.ts should NOT set job status to "processing" before calling executePipelineJob; executor owns all status transitions.

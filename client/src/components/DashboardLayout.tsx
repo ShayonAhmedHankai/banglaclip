@@ -30,18 +30,24 @@ import {
   PanelLeft,
   Loader2,
   Sparkles,
+  Bell,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Info,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Video, label: "Jobs", path: "/dashboard" },
-  { icon: Layers, label: "Batch", path: "/dashboard" },
-  { icon: Youtube, label: "YouTube", path: "/dashboard" },
-  { icon: Settings, label: "Settings", path: "/dashboard" },
+  { icon: Video, label: "Jobs", path: "/jobs" },
+  { icon: Layers, label: "Batch", path: "/batch" },
+  { icon: Youtube, label: "YouTube", path: "/youtube" },
+  { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -160,6 +166,102 @@ type DashboardLayoutContentProps = {
   setSidebarWidth: (width: number) => void;
 };
 
+function NotificationBell() {
+  const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case "success": return <CheckCircle2 className="h-4 w-4 text-[#3AC87A] shrink-0" />;
+      case "error": return <AlertCircle className="h-4 w-4 text-[#FF4444] shrink-0" />;
+      default: return <Info className="h-4 w-4 text-[#4A9EFF] shrink-0" />;
+    }
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => {
+          setOpen(o => !o);
+          if (!open && unreadCount > 0) markAllRead();
+        }}
+        className="relative h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#2c2c2c] transition-colors focus:outline-none"
+        aria-label="Notifications"
+      >
+        <Bell className="h-4 w-4 text-[#ABABAB]" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-[#E8643A] text-white text-[9px] font-bold">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 w-80 bg-[#242424] border border-[#3a3a3a] rounded-lg shadow-xl z-50 overflow-hidden">
+          <div className="flex items-center justify-between p-3 border-b border-[#3a3a3a]">
+            <span className="text-sm font-semibold text-white">Notifications</span>
+            <div className="flex items-center gap-2">
+              {notifications.length > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="text-xs text-[#ABABAB] hover:text-white transition-colors"
+                >
+                  Clear all
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                className="text-[#ABABAB] hover:text-white transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="text-center py-8 text-sm text-[#ABABAB]">
+                <Bell className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                No notifications yet
+              </div>
+            ) : (
+              notifications.slice(0, 20).map(n => (
+                <div
+                  key={n.id}
+                  className={`flex items-start gap-3 p-3 hover:bg-[#2c2c2c] transition-colors cursor-pointer border-b border-[#3a3a3a]/50 last:border-0 ${!n.read ? "bg-[#2c2c2c]/50" : ""}`}
+                  onClick={() => markRead(n.id)}
+                >
+                  {getIcon(n.type)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-white">{n.title}</p>
+                    <p className="text-xs text-[#ABABAB] mt-0.5 leading-relaxed">{n.message}</p>
+                    <p className="text-[10px] text-[#6a6a6a] mt-1">
+                      {new Date(n.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  {!n.read && (
+                    <div className="h-2 w-2 rounded-full bg-[#E8643A] shrink-0 mt-1" />
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
@@ -170,8 +272,13 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+
+  const activeMenuItem = menuItems.find(item =>
+    location === item.path ||
+    (item.path === "/dashboard" && location === "/dashboard") ||
+    (item.path === "/jobs" && location.startsWith("/jobs"))
+  );
 
   useEffect(() => {
     if (isCollapsed) {
@@ -205,6 +312,11 @@ function DashboardLayoutContent({
     };
   }, [isResizing, setSidebarWidth]);
 
+  const isActive = (path: string) => {
+    if (path === "/jobs") return location === "/jobs" || (location.startsWith("/jobs/") && !isNaN(Number(location.split("/jobs/")[1])));
+    return location === path;
+  };
+
   return (
     <>
       <div className="relative" ref={sidebarRef}>
@@ -232,17 +344,17 @@ function DashboardLayoutContent({
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
-                const isActive = location === item.path;
+                const active = isActive(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
-                      isActive={isActive}
+                      isActive={active}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
                       className="h-10 transition-all font-normal text-[#ABABAB] hover:text-white hover:bg-[#2c2c2c]"
                     >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-[#E8643A]" : ""}`} />
-                      <span className={isActive ? "text-white" : ""}>{item.label}</span>
+                      <item.icon className={`h-4 w-4 ${active ? "text-[#E8643A]" : ""}`} />
+                      <span className={active ? "text-white" : ""}>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -289,16 +401,19 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b border-[#3a3a3a] h-14 items-center justify-between bg-[#1a1a1a]/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+        {isMobile ? (
+          <div className="flex border-b border-[#3a3a3a] h-14 items-center justify-between bg-[#1a1a1a]/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-[#242424] border border-[#3a3a3a] text-[#ABABAB]" />
-              <div className="flex items-center gap-3">
-                <span className="tracking-tight text-white">
-                  {activeMenuItem?.label ?? "Menu"}
-                </span>
-              </div>
+              <span className="tracking-tight text-white text-sm">
+                {activeMenuItem?.label ?? "Menu"}
+              </span>
             </div>
+            <NotificationBell />
+          </div>
+        ) : (
+          <div className="flex border-b border-[#3a3a3a] h-14 items-center justify-end bg-[#1a1a1a]/95 px-4 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+            <NotificationBell />
           </div>
         )}
         <main className="flex-1 p-4 bg-[#1a1a1a] min-h-screen">{children}</main>
