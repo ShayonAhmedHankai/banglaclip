@@ -4,9 +4,11 @@ import {
   getJobStages,
   updatePipelineStageStatus,
 } from "../db";
+import { broadcastJobUpdate } from "../sse";
 import { runSilenceRemoval } from "./silenceRemoval";
 import { runCaptionGeneration } from "./captionGeneration";
 import { runExport } from "./exportStage";
+import { runBrollOverlay } from "./brollOverlay";
 
 export type PipelineStage = "silence_removal" | "caption_generation" | "broll_overlay" | "export" | "youtube_upload";
 
@@ -37,6 +39,7 @@ export async function executePipelineJob(jobId: number): Promise<void> {
       try {
         await updatePipelineStageStatus(stage.id, "processing", { startedAt: new Date() });
         await updatePipelineJobStatus(jobId, "processing", { currentStage: stageName });
+        broadcastJobUpdate(jobId, { type: "stage", data: { stageName, status: "processing", progressPercent: 0 } });
 
         // Re-fetch job so each stage sees up-to-date config/outputFileId
         const freshJob = await getPipelineJobById(jobId);
@@ -48,6 +51,7 @@ export async function executePipelineJob(jobId: number): Promise<void> {
           completedAt: new Date(),
           progressPercent: 100,
         });
+        broadcastJobUpdate(jobId, { type: "stage", data: { stageName, status: "completed", progressPercent: 100 } });
       } catch (error) {
         console.error(`[Pipeline] Stage ${stageName} failed:`, error);
 
@@ -62,11 +66,13 @@ export async function executePipelineJob(jobId: number): Promise<void> {
           completedAt: new Date(),
         });
 
+        broadcastJobUpdate(jobId, { type: "done", data: { status: "failed", errorStage: stageName } });
         throw error;
       }
     }
 
     await updatePipelineJobStatus(jobId, "done", { completedAt: new Date() });
+    broadcastJobUpdate(jobId, { type: "done", data: { status: "done" } });
     console.log(`[Pipeline] Job ${jobId} completed successfully`);
   } catch (error) {
     console.error(`[Pipeline] Job ${jobId} execution failed:`, error);
@@ -94,8 +100,10 @@ async function executeStage(
       return runExport(jobId, stageId, job);
 
     case "broll_overlay":
+      return runBrollOverlay(jobId, stageId, job);
+
     case "youtube_upload":
-      // Not yet implemented — simulate with progress ticks
+      // Auto-upload handled via explicit user action on YouTube page
       await simulateStage(jobId, stageName, stageId);
       break;
 

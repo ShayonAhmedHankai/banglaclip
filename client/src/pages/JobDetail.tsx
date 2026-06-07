@@ -22,39 +22,78 @@ import {
 import { Link } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useJobSSE } from "@/hooks/useJobSSE";
+import TranscriptEditor from "@/components/TranscriptEditor";
+import ThumbnailPreview from "@/components/ThumbnailPreview";
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const jobId = parseInt(id || "0");
   const [retrying, setRetrying] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const utils = trpc.useUtils();
 
-  const { data: job, isLoading: jobLoading } = trpc.jobs.getById.useQuery(
+  const { data: job, isLoading: jobLoading, refetch: refetchJob } = trpc.jobs.getById.useQuery(
     { id: jobId },
     {
       enabled: !!jobId,
+      // SSE handles live updates; poll every 10s only as fallback
       refetchInterval: (query) => {
         const data = query.state.data;
         if (!data) return false;
         const active = data.status === "processing" || data.status === "queued";
-        return active ? 5000 : false;
+        return active ? 10000 : false;
       },
     }
   );
 
-  const { data: stages, isLoading: stagesLoading } = trpc.jobs.getStages.useQuery(
+  const { data: stages, isLoading: stagesLoading, refetch: refetchStages } = trpc.jobs.getStages.useQuery(
     { jobId },
     {
       enabled: !!jobId,
       refetchInterval: (query) => {
         if (!job) return false;
         const active = job.status === "processing" || job.status === "queued";
-        return active ? 5000 : false;
+        return active ? 10000 : false;
       },
     }
   );
 
+  // SSE for real-time updates
+  useJobSSE({
+    jobId,
+    enabled: !!jobId && (job?.status === "processing" || job?.status === "queued" || !job),
+    onStage: () => { void refetchStages(); void refetchJob(); },
+    onDone: () => { void refetchJob(); void refetchStages(); },
+  });
+
   const retryMutation = trpc.pipeline.retryJob.useMutation();
+  const downloadUrlQuery = trpc.files.getDownloadUrl.useQuery(
+    { id: job?.outputFileId ?? 0 },
+    { enabled: false }
+  );
+
+  const handleDownload = async () => {
+    if (!job?.outputFileId) {
+      toast.error("No output file available yet");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const result = await utils.files.getDownloadUrl.fetch({ id: job.outputFileId });
+      const a = document.createElement("a");
+      a.href = result.url;
+      a.download = result.filename;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleRetry = async () => {
     setRetrying(true);
@@ -320,6 +359,17 @@ export default function JobDetail() {
           </div>
         </div>
 
+        {/* Thumbnail Preview */}
+        {job.status === "done" && job.outputFileId && (
+          <ThumbnailPreview jobId={jobId} />
+        )}
+
+        {/* Transcript Editor */}
+        <div className="bg-[#242424] border border-[#3a3a3a] rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Captions / Transcript</h2>
+          <TranscriptEditor jobId={jobId} jobStatus={job.status} />
+        </div>
+
         {/* Configuration */}
         <div className="bg-[#242424] border border-[#3a3a3a] rounded-lg p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Configuration</h2>
@@ -405,11 +455,12 @@ export default function JobDetail() {
               </a>
             ) : null}
             <Button
-              onClick={() => toast.info("Download requires the output file to be stored in S3. Check your storage configuration.")}
+              onClick={handleDownload}
+              disabled={downloading || !job.outputFileId}
               className="gap-2 bg-[#2c2c2c] hover:bg-[#3a3a3a] border border-[#3a3a3a] text-white w-full sm:w-auto"
             >
-              <Download className="h-5 w-5" />
-              Download Video
+              {downloading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+              {downloading ? "Preparing..." : "Download Video"}
             </Button>
           </div>
         )}

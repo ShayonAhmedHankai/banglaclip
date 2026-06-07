@@ -23,17 +23,24 @@ export async function runExport(
   // 1. Resolve inputs from prior stages
   const stages = await getJobStages(jobId);
 
+  // Prefer b-roll output if available and not skipped; else fall back to silence_removal
+  const brollStage = stages.find(s => s.stageName === "broll_overlay");
+  const brollMeta = brollStage?.metadata as { skipped?: boolean } | null;
+  const brollOutputId = brollStage?.outputFileId && !brollMeta?.skipped ? brollStage.outputFileId : null;
+
   const silenceStage = stages.find(s => s.stageName === "silence_removal");
   if (!silenceStage?.outputFileId) {
     throw new Error("silence_removal stage output not found");
   }
 
+  const sourceFileId = brollOutputId ?? silenceStage.outputFileId;
+
   const captionStage = stages.find(s => s.stageName === "caption_generation");
   const captionMeta = captionStage?.metadata as { srtKey?: string } | null;
   const srtKey = captionMeta?.srtKey;
 
-  const videoFile = await getVideoFileById(silenceStage.outputFileId);
-  if (!videoFile) throw new Error(`Video file ${silenceStage.outputFileId} not found`);
+  const videoFile = await getVideoFileById(sourceFileId);
+  if (!videoFile) throw new Error(`Video file ${sourceFileId} not found`);
 
   const videoPath = tmpPath("mp4");
   const srtPath = tmpPath("srt");
@@ -42,7 +49,7 @@ export async function runExport(
   try {
     // 2. Download silence-removed video
     await updatePipelineStageStatus(stageId, "processing", { progressPercent: 5 });
-    console.log(`[Export] Downloading video key=${videoFile.fileKey}`);
+    console.log(`[Export] Downloading video key=${videoFile.fileKey} (source: ${brollOutputId ? 'broll' : 'silence_removal'})`);
     const videoSignedUrl = await storageGetSignedUrl(videoFile.fileKey);
     const videoBuf = Buffer.from(await (await fetch(videoSignedUrl)).arrayBuffer());
     await writeFile(videoPath, videoBuf);

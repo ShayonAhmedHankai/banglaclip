@@ -243,6 +243,57 @@ export async function getBatchJobItems(batchJobId: number): Promise<BatchJobItem
   return db.select().from(batchJobItems).where(eq(batchJobItems.batchJobId, batchJobId));
 }
 
+export async function updateUserYouTubeTokens(
+  userId: number,
+  tokens: { accessToken: string; refreshToken: string; expiresAt: Date; channelId?: string }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(users)
+    .set({
+      youtubeAccessToken: tokens.accessToken,
+      youtubeRefreshToken: tokens.refreshToken,
+      youtubeTokenExpiry: tokens.expiresAt,
+      ...(tokens.channelId ? { youtubeChannelId: tokens.channelId } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+}
+
+export async function getUserYouTubeTokens(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.select({
+    youtubeAccessToken: users.youtubeAccessToken,
+    youtubeRefreshToken: users.youtubeRefreshToken,
+    youtubeTokenExpiry: users.youtubeTokenExpiry,
+    youtubeChannelId: users.youtubeChannelId,
+  }).from(users).where(eq(users.id, userId)).limit(1);
+
+  if (!result[0]?.youtubeRefreshToken) return null;
+  return result[0];
+}
+
+export async function resetJobStages(jobId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(pipelineStages)
+    .set({
+      status: "pending",
+      progressPercent: 0,
+      outputFileId: null,
+      metadata: null,
+      errorMessage: null,
+      startedAt: null,
+      completedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(pipelineStages.jobId, jobId));
+}
+
 export async function getBatchJobById(batchJobId: number, userId: number): Promise<BatchJob | undefined> {
   const db = await getDb();
   if (!db) return undefined;
