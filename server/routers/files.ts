@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { storagePut } from "../storage";
+import { storagePut, storageGetSignedUrl } from "../storage";
 import { createVideoFile, getUserVideoFiles, getVideoFileById } from "../db";
 import { TRPCError } from "@trpc/server";
 
@@ -42,6 +42,20 @@ export const filesRouter = router({
         durationSeconds: file.durationSeconds ? parseFloat(file.durationSeconds.toString()) : null,
         createdAt: file.createdAt,
       };
+    }),
+
+  /**
+   * Get a signed download URL for a video file
+   */
+  getDownloadUrl: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const file = await getVideoFileById(input.id, ctx.user.id);
+      if (!file) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+      }
+      const signedUrl = await storageGetSignedUrl(file.fileKey);
+      return { url: signedUrl, filename: file.filename };
     }),
 
   /**

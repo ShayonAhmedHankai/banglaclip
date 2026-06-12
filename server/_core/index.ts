@@ -9,6 +9,8 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startWorker } from "../worker";
 import uploadRouter from "../upload";
+import sseRouter from "../sse";
+import youtubeCallbackRouter from "../youtubeCallback";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +40,12 @@ async function startServer() {
 
   // Multipart video upload (multer — must come before express.json body parser takes over)
   app.use("/api", uploadRouter);
+
+  // Server-Sent Events for real-time job progress
+  app.use("/api", sseRouter);
+
+  // YouTube OAuth callback
+  app.use("/api", youtubeCallbackRouter);
 
   app.use(
     "/api/trpc",

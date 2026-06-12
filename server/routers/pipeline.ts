@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getPipelineJobById, updatePipelineJobStatus } from "../db";
+import { getPipelineJobById, updatePipelineJobStatus, resetJobStages } from "../db";
 import { queueJobForProcessing } from "../pipeline/executor";
 import { TRPCError } from "@trpc/server";
 
@@ -90,13 +90,18 @@ export const pipelineRouter = router({
       }
 
       try {
-        // Reset job to queued status
+        // Reset job to queued status and clear all stage state
         await updatePipelineJobStatus(input.jobId, "queued", {
           errorMessage: null,
           errorStage: null,
+          outputFileId: null,
           startedAt: null,
           completedAt: null,
+          currentStage: "silence_removal",
         });
+
+        // Reset all stages back to pending
+        await resetJobStages(input.jobId);
 
         // Queue for processing
         await queueJobForProcessing(input.jobId);

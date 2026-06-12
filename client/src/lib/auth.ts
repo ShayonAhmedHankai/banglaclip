@@ -29,3 +29,9 @@ export async function signUpWithEmail(email: string, password: string, displayNa
 export async function signOut() {
   return firebaseSignOut(auth);
 }
+
+export async function getIdToken(): Promise<string | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+  return user.getIdToken();
+}

@@ -24,6 +24,11 @@ export const users = pgTable("users", {
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
+  // YouTube OAuth tokens (stored per-user after OAuth flow)
+  youtubeAccessToken: text("youtubeAccessToken"),
+  youtubeRefreshToken: text("youtubeRefreshToken"),
+  youtubeTokenExpiry: timestamp("youtubeTokenExpiry", { withTimezone: true }),
+  youtubeChannelId: varchar("youtubeChannelId", { length: 64 }),
 });
 
 export type User = typeof users.$inferSelect;

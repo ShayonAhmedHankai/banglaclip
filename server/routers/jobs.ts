@@ -8,8 +8,10 @@ import {
   getVideoFileById,
   createPipelineStage,
   getJobStages,
+  updatePipelineStageStatus,
 } from "../db";
 import { TRPCError } from "@trpc/server";
+import { storageGetSignedUrl, storagePut } from "../storage";
 
 const jobConfigSchema = z.object({
   silenceThresholdDb: z.number().default(-35),
@@ -156,6 +158,104 @@ export const jobsRouter = router({
         completedAt: stage.completedAt,
         createdAt: stage.createdAt,
       }));
+    }),
+
+  /**
+   * Get the transcript (SRT) for a job's caption stage
+   */
+  getTranscript: protectedProcedure
+    .input(z.object({ jobId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const job = await getPipelineJobById(input.jobId, ctx.user.id);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+
+      const stages = await getJobStages(input.jobId);
+      const captionStage = stages.find(s => s.stageName === "caption_generation");
+      const meta = captionStage?.metadata as { srtKey?: string } | null;
+      if (!meta?.srtKey) return { srt: null };
+
+      const signedUrl = await storageGetSignedUrl(meta.srtKey);
+      const resp = await fetch(signedUrl);
+      if (!resp.ok) return { srt: null };
+      const srt = await resp.text();
+      return { srt };
+    }),
+
+  /**
+   * Update the transcript (SRT) — user edits captions before export
+   */
+  updateTranscript: protectedProcedure
+    .input(z.object({ jobId: z.number(), srt: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const job = await getPipelineJobById(input.jobId, ctx.user.id);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+
+      const stages = await getJobStages(input.jobId);
+      const captionStage = stages.find(s => s.stageName === "caption_generation");
+      if (!captionStage) throw new TRPCError({ code: "NOT_FOUND", message: "Caption stage not found" });
+
+      // Upload edited SRT back to storage
+      const { key } = await storagePut(
+        `pipeline/${input.jobId}/captions_edited.srt`,
+        Buffer.from(input.srt, "utf-8"),
+        "text/plain",
+      );
+
+      // Update stage metadata with new srtKey
+      const existingMeta = (captionStage.metadata as Record<string, unknown>) ?? {};
+      await updatePipelineStageStatus(captionStage.id, captionStage.status, {
+        metadata: { ...existingMeta, srtKey: key, editedByUser: true },
+      });
+
+      return { success: true, srtKey: key };
+    }),
+
+  /**
+   * Generate a thumbnail from the output video (best frame at ~10% in)
+   */
+  getThumbnail: protectedProcedure
+    .input(z.object({ jobId: z.number(), offsetSeconds: z.number().optional() }))
+    .query(async ({ ctx, input }) => {
+      const job = await getPipelineJobById(input.jobId, ctx.user.id);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      if (!job.outputFileId) return { url: null };
+
+      const outputFile = await getVideoFileById(job.outputFileId);
+      if (!outputFile) return { url: null };
+
+      const { tmpPath, cleanupFiles, runFFmpeg, readFileAsBuffer } = await import("../pipeline/ffmpeg");
+      const { writeFile } = await import("fs/promises");
+      const { storageGetSignedUrl: getUrl } = await import("../storage");
+
+      const videoPath = tmpPath("mp4");
+      const thumbPath = tmpPath("jpg");
+
+      try {
+        const signedUrl = await getUrl(outputFile.fileKey);
+        const buf = Buffer.from(await (await fetch(signedUrl)).arrayBuffer());
+        await writeFile(videoPath, buf);
+
+        const offset = input.offsetSeconds ?? 2;
+        await runFFmpeg([
+          "-ss", String(offset),
+          "-i", videoPath,
+          "-vframes", "1",
+          "-q:v", "2",
+          thumbPath,
+        ]);
+
+        const thumbBuf = await readFileAsBuffer(thumbPath);
+        const { key, url } = await storagePut(
+          `pipeline/${input.jobId}/thumbnail.jpg`,
+          thumbBuf,
+          "image/jpeg",
+        );
+        return { url };
+      } catch {
+        return { url: null };
+      } finally {
+        await cleanupFiles(videoPath, thumbPath);
+      }
     }),
 
   /**
