@@ -1,24 +1,29 @@
-import "dotenv/config";
-import express from "express";
-import { createServer } from "http";
-import net from "net";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerStorageProxy } from "./storageProxy";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
-import { startWorker } from "../worker";
-import uploadRouter from "../upload";
-import sseRouter from "../sse";
-import youtubeCallbackRouter from "../youtubeCallback";
+import 'dotenv/config';
+import { getValidatedEnv } from './env-validation';
+
+// ════ VALIDATE ALL ENVIRONMENT VARIABLES AT STARTUP ════════════════════════
+const env = getValidatedEnv();
+
+import express from 'express';
+import { createServer } from 'http';
+import net from 'net';
+import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import { registerStorageProxy } from './storageProxy';
+import { appRouter } from '../routers';
+import { createContext } from './context';
+import { serveStatic, setupVite } from './vite';
+import { startWorker } from '../worker';
+import uploadRouter from '../upload';
+import sseRouter from '../sse';
+import youtubeCallbackRouter from '../youtubeCallback';
 
 function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const server = net.createServer();
     server.listen(port, () => {
       server.close(() => resolve(true));
     });
-    server.on("error", () => resolve(false));
+    server.on('error', () => resolve(false));
   });
 }
 
@@ -34,46 +39,49 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
   registerStorageProxy(app);
 
   // Multipart video upload (multer — must come before express.json body parser takes over)
-  app.use("/api", uploadRouter);
+  app.use('/api', uploadRouter);
 
   // Server-Sent Events for real-time job progress
-  app.use("/api", sseRouter);
+  app.use('/api', sseRouter);
 
   // YouTube OAuth callback
-  app.use("/api", youtubeCallbackRouter);
+  app.use('/api', youtubeCallbackRouter);
 
   app.use(
-    "/api/trpc",
+    '/api/trpc',
     createExpressMiddleware({
       router: appRouter,
       createContext,
     })
   );
 
-  if (process.env.NODE_ENV === "development") {
+  if (env.NODE_ENV === 'development') {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "5000");
-  const port = await findAvailablePort(preferredPort);
+  const port = await findAvailablePort(env.PORT);
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  if (port !== env.PORT) {
+    console.log(`Port ${env.PORT} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${port}/`);
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`✓ Server running on http://0.0.0.0:${port}/`);
+    console.log(`✓ Environment: ${env.NODE_ENV}`);
   });
 
   // Start background job worker
   startWorker();
 }
 
-startServer().catch(console.error);
+startServer().catch((err) => {
+  console.error('Fatal error starting server:', err);
+  process.exit(1);
+});
