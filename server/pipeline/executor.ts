@@ -9,6 +9,7 @@ import { runSilenceRemoval } from "./silenceRemoval";
 import { runCaptionGeneration } from "./captionGeneration";
 import { runExport } from "./exportStage";
 import { runBrollOverlay } from "./brollOverlay";
+import type { PipelineJob } from "../../drizzle/schema";
 
 export type PipelineStage = "silence_removal" | "caption_generation" | "broll_overlay" | "export" | "youtube_upload";
 
@@ -87,7 +88,7 @@ async function executeStage(
   jobId: number,
   stageName: PipelineStage,
   stageId: number,
-  job: any,
+  job: PipelineJob,
 ): Promise<void> {
   switch (stageName) {
     case "silence_removal":

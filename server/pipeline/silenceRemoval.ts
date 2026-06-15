@@ -11,6 +11,7 @@ import {
   parseSilenceIntervals,
   computeKeepSegments,
   readFileAsBuffer,
+  downloadToTempFile,
   type KeepSegment,
 } from "./ffmpeg";
 
@@ -56,9 +57,7 @@ export async function runSilenceRemoval(
     await updatePipelineStageStatus(stageId, "processing", { progressPercent: 5 });
     console.log(`[SilenceRemoval] Downloading input file key=${inputFile.fileKey}`);
     const signedUrl = await storageGetSignedUrl(inputFile.fileKey);
-    const inputResp = await fetch(signedUrl);
-    if (!inputResp.ok) throw new Error(`Download failed: ${inputResp.status} ${inputResp.statusText}`);
-    await writeFile(inputPath, Buffer.from(await inputResp.arrayBuffer()));
+    await downloadToTempFile(signedUrl, "mp4", inputPath);
 
     // 2. Get duration
     await updatePipelineStageStatus(stageId, "processing", { progressPercent: 15 });

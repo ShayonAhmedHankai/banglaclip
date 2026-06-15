@@ -102,11 +102,11 @@ export function computeKeepSegments(
   return keeps;
 }
 
-export async function downloadToTempFile(url: string, ext: string): Promise<string> {
+export async function downloadToTempFile(url: string, ext: string, targetPath?: string): Promise<string> {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
   const buf = Buffer.from(await resp.arrayBuffer());
-  const path = tmpPath(ext);
+  const path = targetPath ?? tmpPath(ext);
   await writeFile(path, buf);
   return path;
 }

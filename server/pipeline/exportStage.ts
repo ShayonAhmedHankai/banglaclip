@@ -6,6 +6,7 @@ import {
   cleanupFiles,
   runFFmpeg,
   readFileAsBuffer,
+  downloadToTempFile,
 } from "./ffmpeg";
 import { writeFile } from "fs/promises";
 
@@ -51,8 +52,7 @@ export async function runExport(
     await updatePipelineStageStatus(stageId, "processing", { progressPercent: 5 });
     console.log(`[Export] Downloading video key=${videoFile.fileKey} (source: ${brollOutputId ? 'broll' : 'silence_removal'})`);
     const videoSignedUrl = await storageGetSignedUrl(videoFile.fileKey);
-    const videoBuf = Buffer.from(await (await fetch(videoSignedUrl)).arrayBuffer());
-    await writeFile(videoPath, videoBuf);
+    await downloadToTempFile(videoSignedUrl, "mp4", videoPath);
 
     // 3. Download SRT if available
     let hasSrt = false;
@@ -61,12 +61,8 @@ export async function runExport(
         await updatePipelineStageStatus(stageId, "processing", { progressPercent: 20 });
         console.log(`[Export] Downloading SRT key=${srtKey}`);
         const srtSignedUrl = await storageGetSignedUrl(srtKey);
-        const srtResp = await fetch(srtSignedUrl);
-        if (srtResp.ok) {
-          const srtBuf = Buffer.from(await srtResp.arrayBuffer());
-          await writeFile(srtPath, srtBuf);
-          hasSrt = true;
-        }
+        await downloadToTempFile(srtSignedUrl, "srt", srtPath);
+        hasSrt = true;
       } catch (err) {
         console.warn(`[Export] Could not download SRT, proceeding without subtitles: ${err}`);
       }

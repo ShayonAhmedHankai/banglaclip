@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import {
   InsertUser,
@@ -170,6 +170,36 @@ export async function updatePipelineJobStatus(
   await db.update(pipelineJobs)
     .set({ status, updatedAt: new Date(), ...updates })
     .where(eq(pipelineJobs.id, jobId));
+}
+
+export async function claimSpecificJob(jobId: number): Promise<PipelineJob | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const results = await db.update(pipelineJobs)
+    .set({ status: "processing", updatedAt: new Date() })
+    .where(and(eq(pipelineJobs.id, jobId), eq(pipelineJobs.status, "queued")))
+    .returning();
+
+  return results[0];
+}
+
+export async function claimNextQueuedJob(): Promise<PipelineJob | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const results = await db
+    .update(pipelineJobs)
+    .set({ status: "processing", updatedAt: new Date() })
+    .where(eq(pipelineJobs.id,
+      db.select({ id: pipelineJobs.id })
+        .from(pipelineJobs)
+        .where(eq(pipelineJobs.status, "queued"))
+        .orderBy(pipelineJobs.createdAt)
+        .limit(1)
+    ))
+    .returning();
+  return results[0];
 }
 
 export async function createPipelineStage(data: InsertPipelineStage): Promise<PipelineStage> {

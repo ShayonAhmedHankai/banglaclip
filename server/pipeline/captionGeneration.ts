@@ -88,9 +88,7 @@ export async function runCaptionGeneration(
     await updatePipelineStageStatus(stageId, "processing", { progressPercent: 5 });
     console.log(`[Captions] Downloading video key=${videoFile.fileKey}`);
     const signedUrl = await storageGetSignedUrl(videoFile.fileKey);
-    const videoBuf = Buffer.from(await (await fetch(signedUrl)).arrayBuffer());
-    const { writeFile } = await import("fs/promises");
-    await writeFile(videoPath, videoBuf);
+    await downloadToTempFile(signedUrl, "mp4", videoPath);
 
     // 3. Extract audio with FFmpeg
     await updatePipelineStageStatus(stageId, "processing", { progressPercent: 20 });

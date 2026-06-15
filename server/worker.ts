@@ -1,7 +1,5 @@
-import { getDb } from "./db";
+import { claimNextQueuedJob } from "./db";
 import { executePipelineJob } from "./pipeline/executor";
-import { eq } from "drizzle-orm";
-import { pipelineJobs } from "../drizzle/schema";
 
 const POLL_INTERVAL_MS = 10000; // 10 seconds
 let isRunning = false;
@@ -14,24 +12,9 @@ async function pollAndProcessJobs() {
   isRunning = true;
 
   try {
-    const db = await getDb();
-    if (!db) {
-      console.log("[Worker] DB not available, skipping poll");
-      return;
-    }
+    const job = await claimNextQueuedJob();
+    if (!job) return;
 
-    // Find the oldest queued job
-    const pendingJobs = await db
-      .select()
-      .from(pipelineJobs)
-      .where(eq(pipelineJobs.status, "queued"))
-      .limit(1);
-
-    if (pendingJobs.length === 0) {
-      return;
-    }
-
-    const job = pendingJobs[0];
     console.log(`[Worker] Picked up queued job ${job.id}: "${job.jobName}"`);
 
     // Fire-and-forget — executePipelineJob owns all status transitions
