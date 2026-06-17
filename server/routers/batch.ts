@@ -4,6 +4,7 @@ import {
   createBatchJob,
   getUserBatchJobs,
   updateBatchJobStatus,
+  getBatchJobById,
 } from "../db";
 import { TRPCError } from "@trpc/server";
 
@@ -67,17 +68,16 @@ export const batchRouter = router({
     .input(z.object({ batchId: z.number() }))
     .query(async ({ ctx, input }) => {
       try {
-        // Note: In production, add getBatchJobById function to db.ts
-        // For now, return basic structure
-        return {
-          id: input.batchId,
-          userId: ctx.user.id,
-          batchName: "Batch Job",
-          status: "scheduled" as const,
-          processedJobCount: 0,
-          totalJobCount: 0,
-        };
+        const batch = await getBatchJobById(input.batchId, ctx.user.id);
+        if (!batch) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Batch job not found",
+          });
+        }
+        return batch;
       } catch (error) {
+        if (error instanceof TRPCError) throw error;
         console.error("[Batch] Failed to get batch job:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",

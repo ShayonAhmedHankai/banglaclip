@@ -25,6 +25,19 @@ vi.mock("../db", () => ({
     },
   ]),
   updateBatchJobStatus: vi.fn(async () => true),
+  getBatchJobById: vi.fn(async (id, userId) => ({
+    id,
+    userId,
+    batchName: "Test Batch",
+    status: "scheduled",
+    processedJobCount: 0,
+    totalJobCount: 5,
+    errorMessage: null,
+    startedAt: null,
+    completedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  })),
 }));
 
 function createTestContext(): TrpcContext {

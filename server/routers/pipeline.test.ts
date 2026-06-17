@@ -37,10 +37,12 @@ vi.mock("../db", () => ({
     updatedAt: new Date(),
   })),
   updatePipelineJobStatus: vi.fn(async () => {}),
+  resetJobStages: vi.fn(async () => {}),
+  claimSpecificJob: vi.fn(async (id) => ({ id, status: "processing" })),
 }));
 
 vi.mock("../pipeline/executor", () => ({
-  queueJobForProcessing: vi.fn(async () => {}),
+  executePipelineJob: vi.fn(async () => {}),
 }));
 
 function createTestContext(): TrpcContext {

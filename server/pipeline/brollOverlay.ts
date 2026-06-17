@@ -16,6 +16,7 @@
 
 import { getJobStages, getVideoFileById, createVideoFile, updatePipelineStageStatus } from "../db";
 import { storagePut, storageGetSignedUrl } from "../storage";
+import { ENV } from "../_core/env";
 import type { PipelineJob } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
 import {
@@ -23,6 +24,7 @@ import {
   cleanupFiles,
   runFFmpeg,
   readFileAsBuffer,
+  downloadToTempFile,
 } from "./ffmpeg";
 import { writeFile } from "fs/promises";
 
@@ -42,7 +44,7 @@ interface PexelsVideo {
 }
 
 async function searchPexelsVideo(query: string): Promise<PexelsVideo | null> {
-  const apiKey = process.env.PEXELS_API_KEY;
+  const apiKey = ENV.pexelsApiKey;
   if (!apiKey) return null;
 
   try {
@@ -177,7 +179,7 @@ export async function runBrollOverlay(
   const videoFile = await getVideoFileById(silenceStage.outputFileId);
   if (!videoFile) throw new Error(`Video file ${silenceStage.outputFileId} not found`);
 
-  const pexelsConfigured = !!process.env.PEXELS_API_KEY;
+  const pexelsConfigured = !!ENV.pexelsApiKey;
 
   // If Pexels not configured, just copy the video through
   if (!pexelsConfigured) {
@@ -203,8 +205,7 @@ export async function runBrollOverlay(
     // 2. Download main video
     await updatePipelineStageStatus(stageId, "processing", { progressPercent: 5 });
     const signedUrl = await storageGetSignedUrl(videoFile.fileKey);
-    const videoBuf = Buffer.from(await (await fetch(signedUrl)).arrayBuffer());
-    await writeFile(videoPath, videoBuf);
+    await downloadToTempFile(signedUrl, "mp4", videoPath);
 
     // 3. Parse SRT if available
     let segments: SRTSegment[] = [];
@@ -244,9 +245,7 @@ export async function runBrollOverlay(
       const clipPath = tmpPath("mp4");
       tempFiles.push(clipPath);
       try {
-        const clipResp = await fetch(fileUrl);
-        if (!clipResp.ok) continue;
-        await writeFile(clipPath, Buffer.from(await clipResp.arrayBuffer()));
+        await downloadToTempFile(fileUrl, "mp4", clipPath);
 
         // Space b-roll evenly through the video
         const segment = segments[Math.floor((segments.length / maxBRoll) * i)];

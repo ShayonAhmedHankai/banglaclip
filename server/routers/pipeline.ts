@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getPipelineJobById, updatePipelineJobStatus, resetJobStages } from "../db";
-import { queueJobForProcessing } from "../pipeline/executor";
+import { getPipelineJobById, updatePipelineJobStatus, resetJobStages, claimSpecificJob } from "../db";
+import { executePipelineJob } from "../pipeline/executor";
 import { TRPCError } from "@trpc/server";
 
 export const pipelineRouter = router({
@@ -27,9 +27,19 @@ export const pipelineRouter = router({
       }
 
       try {
-        // Queue the job for processing
-        // In production, this would be handled by a background worker
-        await queueJobForProcessing(input.jobId);
+        // Claim the job atomically to ensure it's not double-processed
+        const claimed = await claimSpecificJob(input.jobId);
+        if (!claimed) {
+           throw new TRPCError({
+             code: "BAD_REQUEST",
+             message: "Job is already being processed or not in queued status",
+           });
+        }
+
+        // Fire-and-forget execution
+        executePipelineJob(input.jobId).catch(err =>
+          console.error(`[Pipeline] Manual start failed for job ${input.jobId}:`, err)
+        );
 
         return {
           success: true,
@@ -91,6 +101,7 @@ export const pipelineRouter = router({
 
       try {
         // Reset job to queued status and clear all stage state
+        // MUST happen before resetJobStages to avoid race condition with worker
         await updatePipelineJobStatus(input.jobId, "queued", {
           errorMessage: null,
           errorStage: null,
@@ -103,8 +114,13 @@ export const pipelineRouter = router({
         // Reset all stages back to pending
         await resetJobStages(input.jobId);
 
-        // Queue for processing
-        await queueJobForProcessing(input.jobId);
+        // Claim the job atomically
+        const claimed = await claimSpecificJob(input.jobId);
+        if (claimed) {
+          executePipelineJob(input.jobId).catch(err =>
+            console.error(`[Pipeline] Retry failed for job ${input.jobId}:`, err)
+          );
+        }
 
         return {
           success: true,
