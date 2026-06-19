@@ -126,15 +126,41 @@ banglaclip/
 
 ---
 
-## Pipeline Stages
+## Pipeline Status
 
-| Stage | Description | Status |
-|---|---|---|
-| `silence_removal` | FFmpeg silencedetect → cut and stitch | ✅ Live |
-| `caption_generation` | Whisper AI → Bengali SRT | ✅ Live |
-| `broll_overlay` | Pexels API + LLM keywords → overlay clips | ✅ Live (needs `PEXELS_API_KEY`) |
-| `export` | 9:16 crop + subtitle burn + quality encode | ✅ Live |
-| `youtube_upload` | OAuth + YouTube Data API v3 | ✅ Live (needs YouTube OAuth) |
+| Stage | Description | Status | Notes |
+|---|---|---|---|
+| `silence_removal` | FFmpeg silencedetect → cut and stitch | ✅ Live | Stable, tested |
+| `caption_generation` | Whisper AI → Bengali SRT | ✅ Live | Requires Forge API |
+| `broll_overlay` | Pexels API + LLM keywords → overlay clips | ⚠️ Partial | Falls back if rate-limited or key missing |
+| `export` | 9:16 crop + subtitle burn + quality encode | ✅ Live | FFmpeg-based |
+| `youtube_upload` | OAuth + YouTube Data API v3 | 🔧 WIP | OAuth flow implemented but untested in prod |
+
+### Status Legend
+- ✅ **Live**: Production ready, fully tested.
+- ⚠️ **Partial**: Functional but has known limitations or fallbacks.
+- 🔧 **WIP**: In active development, not recommended for production use.
+- ⏳ **Planned**: Designed but implementation hasn't started.
+
+---
+
+## Known Limitations & Requirements
+
+### Forge API (Required)
+BanglaClip uses a unified **Forge API** for core infrastructure:
+- **Storage**: S3-compatible file storage via presigned URLs.
+- **Transcription**: Whisper AI for high-accuracy Bengali voice-to-text.
+- **Metadata**: LLM-powered keyword extraction and YouTube metadata generation.
+
+*Note: You must have a valid `BUILT_IN_FORGE_API_KEY` for the application to function.*
+
+### B-Roll Overlay
+The B-Roll feature depends on the **Pexels API**.
+- **Rate Limits**: The free tier is limited to 200 requests/hour.
+- **Fallback**: If the API is unavailable, rate-limited, or the key is missing, the pipeline will skip this stage and export the video without B-roll overlays to avoid job failure.
+
+### YouTube Upload
+The YouTube integration requires a Google Cloud Project with the **YouTube Data API v3** enabled. Currently in "Work in Progress" status as we refine the OAuth consent flow and quota management.
 
 ---
 

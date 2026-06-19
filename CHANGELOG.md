@@ -7,7 +7,7 @@ Versioning follows [SemVer](https://semver.org/).
 
 ---
 
-## [Unreleased] — `dev` branch
+## [v1.3.0] — 2026-06-19
 
 ### Added
 - Real download button — generates signed S3 URL, triggers browser download
@@ -24,6 +24,7 @@ Versioning follows [SemVer](https://semver.org/).
 - Export stage now uses b-roll output when available, falls back to silence_removal
 - YouTube page shows real Connect/Disconnect OAuth UI with account status
 - Polling interval on job/stage queries bumped to 10s (SSE handles live updates)
+- README updated with honest pipeline status and Forge API documentation
 
 ### Fixed
 - Retry mutation no longer leaves stale stage data from previous run
